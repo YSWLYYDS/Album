@@ -24,7 +24,7 @@ private:
 
 
 protected:
-    virtual void resizeEvent(QResizeEvent *event);
+    virtual void resizeEvent(QResizeEvent *event);//窗口大小变，图片重新缩放
 private slots:
     void SlotCreatePro(bool);// 槽：响应"创建项目"菜单
     void SlotOpenPro(bool);// 槽：响应"打开项目"菜单

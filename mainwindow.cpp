@@ -11,7 +11,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
-    ui->setupUi(this);//加载界面
+    ui->setupUi(this);
     //创建菜单
     QMenu * menu_file=menuBar()->addMenu(tr("文件(&f)"));//
     //创建项目动作
@@ -42,14 +42,14 @@ MainWindow::MainWindow(QWidget *parent)
     ui->picLayout->addWidget(_picshow);
     auto* pro_pic_show=dynamic_cast<PicShow*>(_picshow);
 
-    connect(pro_tree_widget,&ProTreeWidget::SignUpdateSelected,pro_pic_show,&PicShow::SlotSelectItem);
-    connect(pro_pic_show,&PicShow::SigNextClicked,pro_tree_widget,&ProTreeWidget::SlotNextShow);
-    connect(pro_pic_show,&PicShow::SigPreClicked,pro_tree_widget,&ProTreeWidget::SlotPreShow);
-    connect(pro_tree_widget,&ProTreeWidget::SigUpdatePic,pro_pic_show,&PicShow::SlotUpdatePic);
-    connect(pro_tree_widget,&ProTreeWidget::SigClearSelected,pro_pic_show,&PicShow::SlotDeleteItem);
+    connect(pro_tree_widget,&ProTreeWidget::SignUpdateSelected,pro_pic_show,&PicShow::SlotSelectItem);//树里双击了某张图片 → 通知右边显示器显示它
+    connect(pro_pic_show,&PicShow::SigNextClicked,pro_tree_widget,&ProTreeWidget::SlotNextShow);//下一张
+    connect(pro_pic_show,&PicShow::SigPreClicked,pro_tree_widget,&ProTreeWidget::SlotPreShow);//上一张
+    connect(pro_tree_widget,&ProTreeWidget::SigUpdatePic,pro_pic_show,&PicShow::SlotUpdatePic);//刷新图片
+    connect(pro_tree_widget,&ProTreeWidget::SigClearSelected,pro_pic_show,&PicShow::SlotDeleteItem);//关闭
     connect(pro_tree_widget, &ProTreeWidget::SigClosePro, this, [this](){
         dynamic_cast <PicShow*>(_picshow)-> SlotSelectItem ( "" );
-    });
+    });//关闭项目，清空画面
 
     connect(act_music,&QAction::triggered,pro_tree_widget,&ProTreeWidget::SlotSetMusic);
 }

@@ -9,9 +9,9 @@ CONFIG += c++17
 
 SOURCES += \
     confirmpage.cpp \
+    importworker.cpp \
     main.cpp \
     mainwindow.cpp \
-    opentreethread.cpp \
     picanimationwid.cpp \
     picbutton.cpp \
     picshow.cpp \
@@ -21,17 +21,20 @@ SOURCES += \
     prosetpage.cpp \
     protree.cpp \
     protreeitem.cpp \
-    protreethread.cpp \
     protreewidget.cpp \
     removeprodialog.cpp \
+    scanworker.cpp \
     slideshowdlg.cpp \
+    thumbcache.cpp \
+    thumbnailtask.cpp \
     wizard.cpp
 
 HEADERS += \
     confirmpage.h \
     const.h \
+    importworker.h \
     mainwindow.h \
-    opentreethread.h \
+    nodeinfo.h \
     picanimationwid.h \
     picbutton.h \
     picshow.h \
@@ -41,10 +44,12 @@ HEADERS += \
     prosetpage.h \
     protree.h \
     protreeitem.h \
-    protreethread.h \
     protreewidget.h \
     removeprodialog.h \
+    scanworker.h \
     slideshowdlg.h \
+    thumbcache.h \
+    thumbnailtask.h \
     wizard.h
 
 FORMS += \

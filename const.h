@@ -8,7 +8,7 @@ enum TreeItemType{
     TreeItemDir=2,//表示项目的文件夹
     TreeItemPic=3,//表示项目的图片
 };
-
+//轮播按钮的6种状态
 enum PicBtnState{
     PicBtnStateNormal=1,
     PicBtnStateHover=2,
@@ -19,7 +19,7 @@ enum PicBtnState{
     PicBtnState2Press=6,
 };
 
-const int PROGRESS_WIDTH=300;
-const int PROGRESS_MAX=300;
-const int PREITEM_SIZE=100;
-const int PREICON_SIZE=90;
+const int PROGRESS_WIDTH=300;//进度条宽
+const int PROGRESS_MAX=300;//进度条上限
+const int PREITEM_SIZE=100;//预览格子大小
+const int PREICON_SIZE=90;//格子内缩略图

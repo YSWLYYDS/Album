@@ -14,13 +14,13 @@ class ProTree : public QDialog
 public:
     explicit ProTree(QWidget *parent = nullptr);
     ~ProTree();
-    QTreeWidget* GetTreeWidget();
+    QTreeWidget* GetTreeWidget();//把内部的树交出去,MainWindow 用它拿树接线
 
 private:
     Ui::ProTree *ui;
 
 public slots:
-    void AddProToTree(const QString name,const QString path);
+    void AddProToTree(const QString name,const QString path);//把收到的项目名和路径转发给内部的`ProTreeWidget`
 };
 
 #endif // PROTREE_H

@@ -8,7 +8,7 @@ ProSetPage::ProSetPage(QWidget *parent)
     , ui(new Ui::ProSetPage)
 {
     ui->setupUi(this);
-    registerField("proPath",ui->lineEdit_2);
+    registerField("proPath",ui->lineEdit_2);//字段注册
     registerField("proName",ui->lineEdit);
     connect(ui->lineEdit,&QLineEdit::textEdited,this,&ProSetPage::completeChanged);
     connect(ui->lineEdit_2,&QLineEdit::textEdited,this,&ProSetPage::completeChanged);
@@ -45,7 +45,7 @@ bool ProSetPage::isComplete() const
     //判断路径
     QString absFilePath=dir.absoluteFilePath(ui->lineEdit->text());
     QDir dist_dir(absFilePath);
-    if(dist_dir.exists())
+    if(dist_dir.exists())//项目重名
     {
         ui->tips->setText("project has exists,change path or name!");
         return false;

@@ -11,7 +11,7 @@ PicShow::PicShow(QWidget *parent)
     connect(ui->previousBtn,&QPushButton::clicked,this,&PicShow::SigPreClicked);
     ui->previousBtn->SetIcons(":/icon/previous.png",":/icon/previous_hover.png",":/icon/previous_press.png");
     ui->nextBtn->SetIcons(":/icon/next.png",":/icon/next_hover.png",":/icon/next_press.png");
-    QGraphicsOpacityEffect * opacity_pre=new QGraphicsOpacityEffect(this);
+    QGraphicsOpacityEffect * opacity_pre=new QGraphicsOpacityEffect(this);//初始化两个箭头透明
     opacity_pre->setOpacity(0);
     ui->previousBtn->setGraphicsEffect(opacity_pre);
 
@@ -19,9 +19,9 @@ PicShow::PicShow(QWidget *parent)
     opacity_next->setOpacity(0);
     ui->nextBtn->setGraphicsEffect(opacity_next);
 
-    _animation_show_pre=new QPropertyAnimation(opacity_pre,"opacity",this);
-    _animation_show_pre->setEasingCurve(QEasingCurve::Linear);
-    _animation_show_pre->setDuration(500);
+    _animation_show_pre=new QPropertyAnimation(opacity_pre,"opacity",this);//把动画作用在透明效果上
+    _animation_show_pre->setEasingCurve(QEasingCurve::Linear);//设置缓动曲线
+    _animation_show_pre->setDuration(500);//设置时长
 
     _animation_show_next=new QPropertyAnimation(opacity_next,"opacity",this);
     _animation_show_next->setEasingCurve(QEasingCurve::Linear);
@@ -65,7 +65,7 @@ void PicShow::ShowPreNextBtns(bool b_show)
     if(!b_show&&_b_btnvisible)
     {
         _animation_show_pre->stop();
-        _animation_show_pre->setStartValue(1);
+        _animation_show_pre->setStartValue(1);//淡出
         _animation_show_pre->setEndValue(0);
         _animation_show_pre->start();
 
@@ -79,7 +79,7 @@ void PicShow::ShowPreNextBtns(bool b_show)
     if(b_show&&!_b_btnvisible)
     {
         _animation_show_pre->stop();
-        _animation_show_pre->setStartValue(0);
+        _animation_show_pre->setStartValue(0);//淡入
         _animation_show_pre->setEndValue(1);
         _animation_show_pre->start();
 
@@ -98,7 +98,7 @@ void PicShow::SlotSelectItem(const QString &path)
     _pix_map.load(path);
     auto width=this->width()-20;
     auto height=this->height()-20;
-    _pix_map=_pix_map.scaled(width,height,Qt::KeepAspectRatio);
+    _pix_map=_pix_map.scaled(width,height,Qt::KeepAspectRatio);//等比缩放到可用区域
     ui->label->setPixmap(_pix_map);
 }
 

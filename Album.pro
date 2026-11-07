@@ -1,5 +1,9 @@
 QT += widgets
-QT += core gui multimedia
+QT += core gui
+QT += sql
+SOURCES += reviewrepository.cpp reviewworkspace.cpp
+HEADERS += reviewrepository.h reviewworkspace.h reviewscanworker.h
+HEADERS += imageprobe.h imagecanvas.h businessstyle.h fitimageview.h
 
 CONFIG += c++17
 
@@ -70,4 +74,5 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 RESOURCES += \
     rc.qrc
     
-RC_ICONS="icon/bulm.ico"
+# MinGW windres cannot read absolute icon paths containing Chinese characters.
+# Keep the application icon in Qt resources instead of a native RC resource.

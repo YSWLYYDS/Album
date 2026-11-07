@@ -7,11 +7,26 @@
 #include "protree.h"
 #include "protreewidget.h"
 #include "picshow.h"
+#include "reviewworkspace.h"
+#include "businessstyle.h"
+#include <QTabWidget>
+#include <QSplitter>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    ui->browserSplitter->setStretchFactor(0,0);
+    ui->browserSplitter->setStretchFactor(1,1);
+    ui->browserSplitter->setSizes({280,900});
+    ui->browserSplitter->setChildrenCollapsible(false);
+    auto *legacy=takeCentralWidget();
+    auto *tabs=new QTabWidget(this);
+    tabs->setObjectName("assetPages");
+    tabs->addTab(new ReviewWorkspace(tabs),"营销素材归档与审核");
+    tabs->addTab(legacy,"图片浏览（原有功能）");
+    setCentralWidget(BusinessUi::shell(tabs,"素材工作台","营销素材归档 · 图片预检 · 审核流转",{"素材审核","图片资源浏览"}));
+    qApp->setStyleSheet(BusinessUi::stylesheet());
     //创建菜单
     QMenu * menu_file=menuBar()->addMenu(tr("文件(&f)"));//
     //创建项目动作
@@ -22,12 +37,6 @@ MainWindow::MainWindow(QWidget *parent)
     QAction * act_open_pro=new QAction(QIcon(":/icon/openpro.png"),tr("打开"),this);
     act_open_pro->setShortcut(QKeySequence(Qt::CTRL|Qt::Key_O));
     menu_file->addAction(act_open_pro);
-    //创建设置菜单
-    QMenu * menu_set=menuBar()->addMenu(tr("设置(&s)"));
-    //设置背景音乐
-    QAction * act_music=new QAction(QIcon(":/icon/music.png"),tr("背景音乐"),this);
-    act_music->setShortcut(QKeySequence(Qt::CTRL|Qt::Key_M));
-    menu_set->addAction(act_music);
     //连接信号和槽
     connect(act_create_pro,&QAction::triggered,this,&MainWindow::SlotCreatePro);
     connect(act_open_pro,&QAction::triggered,this,&MainWindow::SlotOpenPro);
@@ -51,18 +60,10 @@ MainWindow::MainWindow(QWidget *parent)
         dynamic_cast <PicShow*>(_picshow)-> SlotSelectItem ( "" );
     });//关闭项目，清空画面
 
-    connect(act_music,&QAction::triggered,pro_tree_widget,&ProTreeWidget::SlotSetMusic);
 }
 MainWindow::~MainWindow()
 {
     delete ui;
-}
-
-void MainWindow::resizeEvent(QResizeEvent *event)
-{
-    auto * pro_pic_show=dynamic_cast<PicShow*>(_picshow);
-    pro_pic_show->ReloadPic();
-    QMainWindow::resizeEvent(event);
 }
 
 void MainWindow::SlotCreatePro(bool)
@@ -74,10 +75,10 @@ void MainWindow::SlotCreatePro(bool)
     page->setTitle(tr("设置项目配置"));
     //连接信号和槽，把项目配置传回来todo...
     connect(&wizard,&Wizard::SigProSettings,dynamic_cast<ProTree*>(_protree),&ProTree::AddProToTree);//安全转换
+    connect(&wizard,&Wizard::SigProSettings,this,[this]{findChild<QTabWidget*>("assetPages")->setCurrentIndex(1);});
     wizard.show();
     wizard.exec();
-    //断开所有信号todo...
-    disconnect();
+    // Connections involving the temporary wizard are removed on destruction.
 }
 
 void MainWindow::SlotOpenPro(bool)
@@ -97,5 +98,6 @@ void MainWindow::SlotOpenPro(bool)
     }
     QString import_path=fileNames.at(0);
     emit SigOpenPro(import_path);
+    findChild<QTabWidget*>("assetPages")->setCurrentIndex(1);
 
 }

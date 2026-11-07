@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include "const.h"
+#include <QThread>
 
 ImportWorker::ImportWorker(QObject *parent)
     :QObject(parent),_next_id(1),_count(0)
@@ -28,13 +29,13 @@ void ImportWorker::ScanDir(const QString &src_dir, const QString &dist_dir, int 
     //prePicId 必须引用传递：图片链要跨目录连续串下去。
     //旧代码把 QTreeWidgetItem* preItem 按值传，子目录递归返回后外层拿不到更新，链会断
     QDir import_dir(src_dir);
-    import_dir.setFilter(QDir::Dirs|QDir::Files|QDir::NoDotAndDotDot);//保留目录和文件
+    import_dir.setFilter(QDir::Dirs|QDir::Files|QDir::NoDotAndDotDot|QDir::NoSymLinks);//保留目录和文件，不跟随链接
     import_dir.setSorting(QDir::Name);//按名字排序，保证建树顺序稳定
     const QFileInfoList list=import_dir.entryInfoList();
 
     for(const QFileInfo &fileInfo : list){
         //取消检查点只放循环开头：目录/文件两个分支都能快速退出，无需重复写
-        if(_cancel.load()){
+        if(_cancel.load() || QThread::currentThread()->isInterruptionRequested()){
             return;
         }
         if(fileInfo.isDir()){

@@ -14,7 +14,6 @@
 ProTreeWidget::ProTreeWidget(QWidget *parent)
     : QTreeWidget(parent),_active_item(nullptr),_right_btn_item(nullptr),_open_progressdlg(nullptr),
     _dialog_progress(nullptr),_selected_item(nullptr),_import_thread(nullptr),_import_worker(nullptr),
-    _player(nullptr),_audio(nullptr),_music_index(0),
     _scan_thread(nullptr),_scan_worker(nullptr),_scan_root(nullptr)
 {
     this->setHeaderHidden(true);
@@ -26,23 +25,26 @@ ProTreeWidget::ProTreeWidget(QWidget *parent)
     connect(_action_import,&QAction::triggered,this,&ProTreeWidget::SlotImprot);
     connect(_action_setstart,&QAction::triggered,this,&ProTreeWidget::SlotSetActive);
     connect(_action_closepro,&QAction::triggered,this,&ProTreeWidget::SlotClosePro);
-    connect(this,&ProTreeWidget::itemDoubleClicked,this,&ProTreeWidget::SlotDoubleClickItem);
+    connect(this,&ProTreeWidget::itemActivated,this,&ProTreeWidget::SlotDoubleClickItem);
     connect(_action_slideshow,&QAction::triggered,this,&ProTreeWidget::SlotSlideShow);
 
-    _player=new QMediaPlayer(this);//管播什么
-    _audio=new QAudioOutput(this);//管声音从哪个设备出来、音量多大
-    _player->setAudioOutput(_audio);
-    connect(_player,&QMediaPlayer::mediaStatusChanged,this,&ProTreeWidget::SlotMediaStatus);
-    //排查“没有声音”：打印播放链路的状态
-    connect(_player,&QMediaPlayer::mediaStatusChanged,this,[](QMediaPlayer::MediaStatus status){
-        qDebug()<<"[music] mediaStatus:"<<status;
-    });
-    connect(_player,&QMediaPlayer::playbackStateChanged,this,[](QMediaPlayer::PlaybackState state){
-        qDebug()<<"[music] playbackState:"<<state;
-    });
-    connect(_player,&QMediaPlayer::errorOccurred,this,[](QMediaPlayer::Error error,const QString &errorString){
-        qDebug()<<"[music] error:"<<error<<errorString;
-    });
+}
+
+ProTreeWidget::~ProTreeWidget()
+{
+    // Long worker slots cannot receive queued cancellation while running.
+    if(_import_thread){
+        _import_thread->requestInterruption();
+        if(_import_worker)_import_worker->SlotCancel();
+        _import_thread->quit();_import_thread->wait();
+        delete _import_worker;_import_worker=nullptr;
+    }
+    if(_scan_thread){
+        _scan_thread->requestInterruption();
+        if(_scan_worker)_scan_worker->SlotCancel();
+        _scan_thread->quit();_scan_thread->wait();
+        delete _scan_worker;_scan_worker=nullptr;
+    }
 }
 
 void ProTreeWidget::AddProToTree(const QString &name, const QString &path)
@@ -93,17 +95,13 @@ void ProTreeWidget::SlotItemPressed(QTreeWidgetItem *pressedItem, int column)
 
 void ProTreeWidget::SlotDoubleClickItem(QTreeWidgetItem *doubleItem, int col)
 {
-    if(QGuiApplication::mouseButtons()==Qt::LeftButton){
-        auto * tree_doubleItem=dynamic_cast<ProTreeItem*>(doubleItem);
-        if(!tree_doubleItem){
-            return;
-        }
-        int itemtype=tree_doubleItem->type();
-        if(itemtype==TreeItemPic){
-            emit SignUpdateSelected(tree_doubleItem->GetPath());
-            _selected_item=doubleItem;
-        }
-    }
+    Q_UNUSED(col);
+    auto *item=dynamic_cast<ProTreeItem*>(doubleItem);
+    if(!item||item->type()!=TreeItemPic)return;
+    // itemActivated already represents a deliberate activation (double-click
+    // or Enter). Do not recheck global mouse state: it can already be released.
+    _selected_item=item;
+    emit SignUpdateSelected(item->GetPath());
 }
 
 void ProTreeWidget::SlotImprot()
@@ -148,7 +146,8 @@ void ProTreeWidget::SlotImprot()
     connect(_import_worker,&ImportWorker::sigFinished,this,&ProTreeWidget::SlotImportFinished);
     connect(this,&ProTreeWidget::SignStartImport,_import_worker,&ImportWorker::SlotStart);
     connect(_dialog_progress,&QProgressDialog::canceled,this,&ProTreeWidget::SlotCancelProgress);
-    connect(this,&ProTreeWidget::SignCancelProgress,_import_worker,&ImportWorker::SlotCancel);
+    // SlotCancel only writes an atomic flag; a queued slot cannot interrupt a long scan.
+    connect(this,&ProTreeWidget::SignCancelProgress,_import_worker,&ImportWorker::SlotCancel,Qt::DirectConnection);
 
     _import_thread->start();
     emit SignStartImport(import_path,path);//队列连接：SlotStart 排进子线程事件循环执行
@@ -341,12 +340,13 @@ void ProTreeWidget::SlotBatchReady(const QList<NodeInfo> &items)
 void ProTreeWidget::SlotScanFinished(bool cancelled)
 {
     if(cancelled&&_scan_root){
+        const QString cancelledPath=_scan_root->GetPath();
         //只删树节点，绝不碰磁盘（旧 run() 里 removeRecursively 会删用户项目，是危险行为）
         int index=this->indexOfTopLevelItem(_scan_root);
         if(index>=0){
             delete this->takeTopLevelItem(index);//先摘下来再 delete，避免悬空指针
         }
-        _set_path.remove(_scan_root->GetPath());//允许下次重新打开同一个路径
+        _set_path.remove(cancelledPath);//节点删除前保存路径，避免释放后访问
     }
     _id_to_item.clear();
     _scan_root=nullptr;
@@ -376,79 +376,9 @@ void ProTreeWidget::SlotSlideShow()
     qDebug()<<"first_child_item is"<<first_child_item->GetPath();
     qDebug()<<"last_child_item is"<<last_child_item->GetPath();
 
-    //播放轮播图前，自动加载 music 文件夹中的背景音乐
-    LoadAndPlayMusic(right_pro_item->GetPath());
-
     _slide_show_dlg=std::make_shared<SlideShowDlg>(this,first_child_item,last_child_item);
-    //关闭轮播窗口时停止背景音乐
-    connect(_slide_show_dlg.get(),&QDialog::finished,this,[this](int){
-        _player->stop();
-    });
     _slide_show_dlg->setModal(true);
     _slide_show_dlg->showMaximized();
-}
-
-void ProTreeWidget::LoadAndPlayMusic(const QString &pro_path)
-{
-    QStringList start_dirs;
-    start_dirs<<QCoreApplication::applicationDirPath()
-             <<QDir::currentPath()
-             <<pro_path;//搜索exe所在目录、工作目录、项目目录
-
-    QString music_dir_path;
-    for(const auto &start : start_dirs){
-        QDir dir(start);
-        for(int level=0; level<8 && dir.exists(); ++level){
-            if(dir.exists("music")){
-                music_dir_path=dir.filePath("music");
-                break;
-            }
-            if(!dir.cdUp()){
-                break;
-            }
-        }
-        if(!music_dir_path.isEmpty()){
-            break;
-        }
-    }
-
-    if(music_dir_path.isEmpty()){
-        qDebug()<<"music folder not found. exe dir:"
-               <<QCoreApplication::applicationDirPath()
-               <<" work dir:"<<QDir::currentPath();
-        return;
-    }
-
-    QDir music_dir(music_dir_path);
-    QStringList filters;
-    filters<<"*.mp3"<<"*.flac"<<"*.wav";
-    auto files=music_dir.entryList(filters,QDir::Files,QDir::Name);
-    if(files.isEmpty()){
-        qDebug()<<"music no audio file in"<<music_dir_path;
-        return;
-    }
-
-    _music_list.clear();
-    for(const auto &file : files)//过滤坏文件，装进播放列表
-    {
-        QString abs_path=music_dir.absoluteFilePath(file);
-        QFileInfo info(abs_path);
-        //跳过不存在或空文件，避免加载后无声
-        if(!info.exists()||info.size()==0){
-            qDebug()<<"[music] skip invalid file:"<<abs_path;
-            continue;
-        }
-        _music_list.append(QUrl::fromLocalFile(abs_path));
-    }
-    if(_music_list.isEmpty()){
-        return;
-    }
-    qDebug()<<"[music] load from"<<music_dir_path<<"count:"<<_music_list.size();
-    qDebug()<<"[music] first file:"<<_music_list.first()<<"volume:"<<_audio->volume();
-
-    _music_index=0;
-    _player->setSource(_music_list[_music_index]);//告诉播放器播哪个
-    _player->play();
 }
 
 void ProTreeWidget::SlotOpenPro(const QString &path)
@@ -470,7 +400,7 @@ void ProTreeWidget::SlotOpenPro(const QString &path)
     connect(_scan_worker,&ScanWorker::sigProgress,this,&ProTreeWidget::SlotUpdateOpenProgress);
     connect(_scan_worker,&ScanWorker::sigFinished,this,&ProTreeWidget::SlotScanFinished);
     connect(this,&ProTreeWidget::SignStartScan,_scan_worker,&ScanWorker::SlotStart);
-    connect(this,&ProTreeWidget::SignCancelOpenProgress,_scan_worker,&ScanWorker::SlotCancel);
+    connect(this,&ProTreeWidget::SignCancelOpenProgress,_scan_worker,&ScanWorker::SlotCancel,Qt::DirectConnection);
 
     _open_progressdlg=new QProgressDialog(this);
     connect(_open_progressdlg,&QProgressDialog::canceled,this,&ProTreeWidget::SlotCancelOpenProgress);
@@ -509,70 +439,6 @@ void ProTreeWidget::SlotPreShow()
     emit SigUpdatePic(curItem->GetPath());
     _selected_item=curItem;
     this->setCurrentItem(curItem);
-}
-
-void ProTreeWidget::SlotSetMusic(bool)
-{
-    qDebug() << "SlotSetMusic" <<Qt::endl;
-    QFileDialog file_dialog;
-    file_dialog.setFileMode(QFileDialog::ExistingFiles);
-    file_dialog.setWindowTitle("选择背景音乐");
-
-    file_dialog.setDirectory(QDir::currentPath());
-    file_dialog.setViewMode(QFileDialog::Detail);
-    file_dialog.setNameFilter("(*.mp3)");
-
-    QStringList fileNames;
-    if (file_dialog.exec()){
-        fileNames = file_dialog.selectedFiles();
-    }
-
-    if(fileNames.length() <= 0){
-        return;
-    }
-
-    _music_list.clear();
-
-    for(auto filename : fileNames){
-        qDebug() << "filename is " << filename << Qt::endl;
-        _music_list.append(QUrl::fromLocalFile(filename));
-    }
-
-    if(_player->playbackState()!=QMediaPlayer::PlayingState)
-    {
-        _music_index=0;
-        _player->setSource(_music_list[_music_index]);
-        _player->play();
-    }
-
-
-}
-
-void ProTreeWidget::SlotStartMusic()
-{
-    qDebug()<< "ProTreeWidget::SlotStartMusic" << Qt::endl;
-    _player->play();
-}
-
-void ProTreeWidget::SlotStopMusic()
-{
-    qDebug()<< "ProTreeWidget::SlotStopMusic" << Qt::endl;
-    _player->pause();
-}
-
-void ProTreeWidget::SlotMediaStatus(QMediaPlayer::MediaStatus status)
-{
-    //一首播放完毕，自动切到下一首；到列表尾部后回到第一首循环
-    if(status!=QMediaPlayer::EndOfMedia)
-    {
-        return;
-    }
-    if(_music_list.isEmpty()){
-        return;
-    }
-    _music_index=(_music_index+1)%_music_list.size();//播放完一首循环进入下一首
-    _player->setSource(_music_list[_music_index]);
-    _player->play();
 }
 
 

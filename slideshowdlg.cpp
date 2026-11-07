@@ -13,7 +13,7 @@ SlideShowDlg::SlideShowDlg(QWidget *parent, QTreeWidgetItem *frist_item, QTreeWi
     ui->closeBtn->SetIcons(":/icon/closeshow.png",":/icon/closeshow_hover.png",":/icon/closeshow_press.png");
     ui->playBtn->SetIcons(":/icon/play.png",":/icon/play_hover.png",":/icon/play_press.png",":/icon/pause.png",":/icon/pause_hover.png",":/icon/pause_press.png");
 
-    connect(ui->closeBtn,&QPushButton::clicked,this,&QDialog::reject);//reject 会发射 finished，便于外部停止音乐
+    connect(ui->closeBtn,&QPushButton::clicked,this,&QDialog::reject);
     connect(ui->slidenextBtn,&QPushButton::clicked,this,&SlideShowDlg::SlotSlideNext);
     connect(ui->slidepreBtn,&QPushButton::clicked,this,&SlideShowDlg::SlotSlidePre);
 
@@ -25,13 +25,6 @@ SlideShowDlg::SlideShowDlg(QWidget *parent, QTreeWidgetItem *frist_item, QTreeWi
     connect(ui->playBtn,&PicStateBtn::clicked,ui->picAnimation,&PicAnimationWid::SlotStartOrStop);
     connect(ui->picAnimation,&PicAnimationWid::SigStart,ui->playBtn,&PicStateBtn::SlotStart);
     connect(ui->picAnimation,&PicAnimationWid::SigStop,ui->playBtn,&PicStateBtn::SlotStop);
-
-    //播放/暂停按钮同步控制背景音乐（parent 是 ProTreeWidget）
-    auto * pro_tree=qobject_cast<ProTreeWidget*>(parent);
-    if(pro_tree){
-        connect(ui->picAnimation,&PicAnimationWid::SigMusicPlay,pro_tree,&ProTreeWidget::SlotStartMusic);
-        connect(ui->picAnimation,&PicAnimationWid::SigMusicPause,pro_tree,&ProTreeWidget::SlotStopMusic);
-    }
 
     ui->picAnimation->SetPixmap(_first_item);
     ui->picAnimation->Start();

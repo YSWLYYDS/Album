@@ -18,6 +18,7 @@ public:
 
     QPixmap Get(const QString &key);            // 命中：节点移到队头并返回；未命中：返回空 QPixmap
     void Put(const QString &key, const QPixmap &pix); // 插入/更新到队头，超过容量淘汰队尾
+    qint64 costBytes() const { return _bytes; }
 
 private:
     ThumbCache();
@@ -26,6 +27,8 @@ private:
     std::list<std::pair<QString,QPixmap>> _list; // 队头 = 最近使用
     QHash<QString, ListIt> _map;                 // key -> list 中的位置
     int _cap;                                    // 缓存上限
+    qint64 _bytes = 0;
+    static constexpr qint64 MaxBytes = 32LL * 1024 * 1024;
 };
 
 #endif // THUMBCACHE_H

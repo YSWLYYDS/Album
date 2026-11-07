@@ -8,10 +8,6 @@
 #include <QHash>
 #include "scanworker.h"
 #include "importworker.h"
-#include <QMediaPlayer>
-#include <QAudioOutput>
-#include <QList>
-#include <QUrl>
 class SlideShowDlg;//前项声明，避免互引用
 class ProTreeItem;
 
@@ -20,6 +16,7 @@ class ProTreeWidget : public QTreeWidget
     Q_OBJECT
 public:
     ProTreeWidget(QWidget * parent=nullptr);
+    ~ProTreeWidget() override;
     void AddProToTree(const QString&name,const QString &path);//新建项目落树
 private:
     QSet<QString> _set_path;//判断重名
@@ -39,11 +36,6 @@ private:
     ProTreeItem * _scan_root;//本次扫描顶层项目节点
     QHash<int, ProTreeItem*> _id_to_item;//扫描/导入期间的“编号→节点”查表
     std::shared_ptr<SlideShowDlg>_slide_show_dlg;//轮播图窗口的智能指针
-    QMediaPlayer * _player;//只负责播放控制
-    QAudioOutput * _audio;//音量与音频输出必须单独绑定
-    QList<QUrl> _music_list;//替代QMediaPlaylist
-    int _music_index;
-    void LoadAndPlayMusic(const QString& pro_path);//扫描 music 文件夹并自动播放
 private slots:
     void SlotItemPressed(QTreeWidgetItem *pressedItem, int column);//右键菜单
     void SlotDoubleClickItem(QTreeWidgetItem *doubleItem, int col);//双击看图
@@ -58,16 +50,12 @@ private slots:
     void SlotFinishOpenProgress();
     void SlotCancelOpenProgress();
     void SlotSlideShow();
-    void SlotMediaStatus(QMediaPlayer::MediaStatus status);//一首播完自动切下一首
     void SlotBatchReady(const QList<NodeInfo> &items);//收批量节点数据，在主线程建树
     void SlotScanFinished(bool cancelled);//扫描结束：取消则清树，正常则收尾；两种情况都要收线程
 public slots:
     void SlotOpenPro(const QString& path);
     void SlotNextShow();
     void SlotPreShow();
-    void SlotSetMusic(bool);
-    void SlotStartMusic();
-    void SlotStopMusic();
 signals:
     void SignCancelProgress();
     void SignCancelOpenProgress();

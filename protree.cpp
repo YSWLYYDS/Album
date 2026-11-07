@@ -2,12 +2,13 @@
 #include "ui_protree.h"
 
 ProTree::ProTree(QWidget *parent)
-    : QDialog(parent)
+    : QWidget(parent)
     , ui(new Ui::ProTree)
 {
     ui->setupUi(this);
-    this->setMinimumWidth(378);
-    this->setMaximumWidth(378);
+    setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    ui->label_pro->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+    ui->treeWidget->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
 }
 
 ProTree::~ProTree()

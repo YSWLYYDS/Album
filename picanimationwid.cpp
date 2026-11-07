@@ -23,8 +23,8 @@ void PicAnimationWid::SetPixmap(QTreeWidgetItem *item)
     }
     auto * tree_item=dynamic_cast<ProTreeItem*>(item);
     auto path=tree_item->GetPath();
-    _pixmap1.load(path);
-    _cur_item=tree_item;
+    _pixmap1.load(path);// 读图片文件进底层图
+    _cur_item=tree_item;// 记住"我现在显示的是谁"
 
     if(_map_items.find(path)==_map_items.end()){
         _map_items[path]=tree_item;
@@ -99,7 +99,7 @@ void PicAnimationWid::paintEvent(QPaintEvent *event)
         return;
     }
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing,true);
+    painter.setRenderHint(QPainter::Antialiasing,true);//开抗锯齿
     QRect rect=geometry();
     int w=rect.width();
     int h=rect.height();
@@ -180,13 +180,11 @@ void PicAnimationWid::SlotStartOrStop()
         _factor=0;
         _timer->start(25);
         _b_start=true;
-        emit SigMusicPlay();//图片继续轮播，音乐继续播放
     }else{
         _timer->stop();
         _factor=0;
         update();
         _b_start=false;
-        emit SigMusicPause();//图片暂停，音乐同步暂停
     }
 }
 

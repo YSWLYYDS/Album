@@ -15,7 +15,7 @@ void ThumbnailTask::run()
     reader.setAutoTransform(true);//按图片里的 EXIF 方向标记自动旋转
 
     QSize orig = reader.size();
-    if(orig.isValid() && orig.width() > 0 && orig.height() > 0)
+    if(orig.isValid() && (orig.width() > _size || orig.height() > _size))
     {
         reader.setScaledSize(orig.scaled(_size, _size, Qt::KeepAspectRatio));//预告解码器缩略图的目标尺寸
     }
@@ -23,11 +23,12 @@ void ThumbnailTask::run()
     QImage img;
     if(!reader.read(&img))// 失败也要删，否则任务对象泄漏
     {
+        emit sigThumbReady(_gen, _path, QImage());
         deleteLater();
         return;
     }
 
-    if(img.width() > _size * 2 || img.height() > _size * 2)//二次缩放
+    if(img.width() > _size || img.height() > _size)//确保解码插件返回的图像也不超过上限
     {
         img = img.scaled(_size, _size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     }

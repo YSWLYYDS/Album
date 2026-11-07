@@ -1,13 +1,13 @@
 #ifndef PROTREE_H
 #define PROTREE_H
 
-#include <QDialog>
+#include <QWidget>
 #include <QTreeWidget>
 namespace Ui {
 class ProTree;
 }
 
-class ProTree : public QDialog
+class ProTree : public QWidget
 {
     Q_OBJECT
 

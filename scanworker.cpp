@@ -2,6 +2,7 @@
 #include <QDir>
 #include <const.h>
 #include <QFileInfo>
+#include <QThread>
 ScanWorker::ScanWorker(QObject *parent)
     : QObject{parent}
 {}
@@ -18,12 +19,12 @@ void ScanWorker::Enqueue(const NodeInfo &info)
 void ScanWorker::ScanDir(const QString &dir_path, int parentId, int &prePicId)
 {
     QDir dir(dir_path);
-    dir.setFilter(QDir::Dirs|QDir::Files|QDir::NoDotAndDotDot);
+    dir.setFilter(QDir::Dirs|QDir::Files|QDir::NoDotAndDotDot|QDir::NoSymLinks);
     dir.setSorting(QDir::Name);
     auto list=dir.entryInfoList();
 
     for(int i=0;i<list.size();++i){
-        if(_cancel){
+        if(_cancel || QThread::currentThread()->isInterruptionRequested()){
             return;
         }
         const QFileInfo &fileInfo=list.at(i);
